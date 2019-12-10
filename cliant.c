@@ -1,14 +1,17 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <time.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define MAX 64
 #define SERVER_IP "127.0.0.1" //local loopback
-#define SMTP 25
-#define POP 110
+#define SMTP 1900
+#define POP 1901
 
 char from[MAX];
 
@@ -27,10 +30,11 @@ int main(void){
 	const List menu[]={{0,"Exit"},{1,"Send"},{2,"Pop"}};
 	int i,v;
 
+	system("clear");
 	printf("メールアドレスを入力してください\n > ");
 	ex_fgets(from,MAX-1);
 	while(1){
-	printf("メニュー\n");
+		printf("メニュー\n");
 		for(i=0;i<3;i++){
 			printf("%d : %s\n",menu[i].id,menu[i].mode);
 		}
@@ -51,7 +55,6 @@ int main(void){
 				fprintf(stderr,"argument\n");
 				return -1;
 		}
-		break;
 	}
 	return 0;
 }
@@ -79,7 +82,9 @@ int smtp(){
 	strftime(buff, sizeof(buff), "%Y/%m/%d %H:%M:%S", localtime(&t));
 	ex_fprintf(fp,"Date   ;%s\n",buff);
 	printf("Subject\n > ");
-	ex_fgets(buff,MAX-1);
+	fflush(stdout);
+	fgets(buff, MAX-1, stdin);
+	buff[strlen(buff) - 1] = '\0';
 	ex_fprintf(fp,"Subject;%s\n",buff);
 	memset(buff,0,sizeof(buff));
 	printf("Body\n");
@@ -91,8 +96,6 @@ int smtp(){
 		ex_fprintf(fp,"%s\n",buff);
 	}
 	fclose(fp);
-	test(txt,fp);
-	remove(txt);
 	// 送受信バッファの初期化
 	memset(buff,0,sizeof(buff));
 	memset(msg,0,sizeof(buff));
@@ -110,29 +113,26 @@ int smtp(){
 		perror("connect");
 		return -1;
 	}
-	printf("conected server\n");
 	// 送信処理
+	printf("\nConnect to server\n");
+	// ユーザー情報
+	send(sd, from, sizeof(from),0);
+	recv(sd, msg, sizeof(msg),0);
+	// 本文
 	if((fp = fopen(txt,"r")) == NULL){
 		fprintf(stderr,"ファイルのオープンに失敗しました\n");
 		fclose(fp);
 		return -1;
 	}
-	// ユーザー情報
-	strcpy(buff,from);
-	buff[strlen(buff) - 1] = '\0';
-	send(sd, buff, sizeof(buff),0);
-	recv(sd, msg, sizeof(msg),0);
-	// 本文
-	if(strcmp(msg,"0") == 0){
-		while (strcmp(msg,"0") == 0) {
-			fgets(buff, MAX, fp);
-			buff[strlen(buff) - 1] = '\0';
-			send(sd, buff, sizeof(buff),0);
-			recv(sd, msg, sizeof(msg),0);
-		}
+	while (strcmp(msg,"1") != 0) {
+		fgets(buff, MAX-1, fp);
+		buff[strlen(buff) - 1] = '\0';
+		send(sd, buff, sizeof(buff),0);
+		recv(sd, msg, sizeof(msg),0);
 	}
-	printf("send message\n");
 	fclose(fp);
+	close(sd);
+	printf("Disconnect from server\n\n");
 	remove(txt);
 	return 0;
 }
@@ -158,24 +158,25 @@ int pop(){
 		perror("connect");
 		return -1;
 	}
-	printf("conected server\n");
 	// 受信処理
+	printf("\nConnect to server\n");
 	// ユーザー情報
-	strcpy(buff,from);
-	buff[strlen(buff) - 1] = '\0';
-	send(sd, buff, sizeof(buff),0);
-	recv(sd, msg, sizeof(msg),0);
+	send(sd, from, sizeof(from),0);
 	// 受信処理
-	while(strcmp(buff,".\n") != 0) {
-		recv(sd, msg, sizeof(msg),0);
-		if(strcmp(msg,".\n") != 0){
+	printf("-------------------------\n");
+	while(strcmp(msg,".") != 0) {
+		recv(sd, msg, sizeof(msg), 0);
+		if(strcmp(msg,".") == 0){
+			printf("-------------------------\n");
+			strcpy(buff,"1");
+		} else {
 			printf("%s\n",msg);
 			strcpy(buff,"0");
 		}
-		else strcpy(buff,"1");
 		send(sd, buff, sizeof(buff),0);
 	}
-	printf("recieve message\n");
+	close(sd);
+	printf("Disconnect from server\n\n");
 	return 0;
 }
 int ex_fgets(char buff[],int size){
