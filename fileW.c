@@ -1,21 +1,19 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include <string.h>
-     
+
     #define N 256 // 1行の最大文字数(バイト数)
      
     int main(void) {
     	FILE *fp; // FILE型構造体
-    	char fname[16],fname2[16] ,fname3[]=".txt";
+    	char fname[16],fname2[]=".txt";
     	char str[N];
-	char i=1;
+		char fi[2]="1";
 
-	strcpy(fname,"UserA/test");
-
-	for(;;i++){
-		strcpy(fname,i);
+	while(1){
+		strcpy(fname,"UserA/test");
+		strcat(fname,fi);
 		strcat(fname,fname2);
-		strcat(fname,fname3);
 
 		fp = fopen(fname, "r"); // ファイルを開く。失敗するとNULLを返す。
 		if(fp == NULL) {
@@ -28,6 +26,8 @@
     		}
      
     		fclose(fp); // ファイルを閉じる
+    		remove(fname);
+    		fi[0]+=1;
      	}
     	return 0;
     }
