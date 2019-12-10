@@ -17,8 +17,9 @@ char from[MAX];
 
 int smtp();
 int pop();
-int ex_fgets(char buff[],int size);
-int ex_fprintf(FILE *fp,char format[],char buff[]);
+int ex_fgets(char buff[],int size);					//空白を許さないfgets
+int ex_fprintf(FILE *fp,char format[],char buff[]);	//ファイルの書き込み失敗処理を何度も書くのが面倒だったため用意
+int cut_at(char str[]);
 int test(char txt[],FILE *fp);
 
 int main(void){
@@ -33,6 +34,7 @@ int main(void){
 	system("clear");
 	printf("メールアドレスを入力してください\n > ");
 	ex_fgets(from,MAX-1);
+	cut_at(from);
 	while(1){
 		printf("メニュー\n");
 		for(i=0;i<3;i++){
@@ -197,6 +199,18 @@ int ex_fprintf(FILE *fp,char format[],char buff[]){
 		return -1;
 	}
 	return 0;
+}
+int cut_at(char str[]){
+    char* tp;
+
+    /* 最初に見つかった区切り文字（","）に "\0" を挿入する */
+    tp = strtok(str, "@");
+    /* strtok() の戻り値は最初のトークンの位置 */
+    printf("%s\n", tp);
+    /* 第一引数に NULL を指定すると前回の str 値の続きから始める */
+    /* strtok() の戻り値は次のトークンの位置 */
+    /* 区切り文字が見つからなかったら NULL が返ってくる */
+    return 0;
 }
 int test(char txt[],FILE *fp){
 	char buff[MAX];
