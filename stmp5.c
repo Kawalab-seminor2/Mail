@@ -16,7 +16,7 @@
 #define SMTP 1900
 #define POP 110
 
-main(){
+int main(){
     int sock, cli, k;
     unsigned int len;
     int sent;
@@ -36,7 +36,7 @@ main(){
     server.sin_family = AF_INET;
     server.sin_port = htons(SMTP);
     server.sin_addr.s_addr = INADDR_ANY;
-	bzero(&server.sin_zero, 10);
+	//bzero(&server.sin_zero, 10);
 
 	//bind
 len = sizeof(struct sockaddr_in);
@@ -70,7 +70,7 @@ while(1)
     printf("connection request to %s¥n",to);
 
     for(k=0;;k++){
-    fprintf(file_dir,"%s/mail%d.txt", to, k+1);
+    sprintf(file_dir,"%s/mail%d.txt", to, k+1);
     if ((fp = fopen(file_dir, "r")) != NULL)
 	 break;
     }
