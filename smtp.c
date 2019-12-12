@@ -26,7 +26,7 @@ int main(){
     FILE *fp;
 
 	//ソケットの作成
-    if(sock = socket(AF_INET, SOCK_STREAM, 0) == ERR)
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) == ERR)
     {
         perror("socket: ");
         exit(-1);
@@ -40,7 +40,7 @@ int main(){
 
 	//bind
 len = sizeof(struct sockaddr_in);
-if((bind(sock, (struct sockaddr *)&server, len)) == ERR)
+if(bind(sock, (struct sockaddr *)&server, sizeof(server)) == ERR)
     {
         perror("bind");
         exit(-1);
@@ -55,10 +55,13 @@ if((listen(sock, 10)) == ERR)
 
 while(1)
     {
+
     memset(buff, 0, sizeof(buff));
-    memset(msg, 0, sizeof(msg));
+printf("test\n");
+    memset(msg, 0, sizeof(msg));printf("test\n");	
     memset(to, 0, sizeof(to));
-    printf("waiting for connection¥n");
+	printf("test\n");
+    printf("waiting for connection\n");
     //accept
     if((cli = accept(sock, (struct sockaddr *)&client, &len)) == ERR)
     {
@@ -67,12 +70,11 @@ while(1)
     }
 
     recv(cli, to, sizeof(msg), 0);
-    printf("connection request to %s¥n",to);
+    printf("connection request to %s\n",to);
 
     for(k=0;;k++){
     sprintf(file_dir,"%s/mail%d.txt", to, k+1);
-    if ((fp = fopen(file_dir, "r")) != NULL)
-	 break;
+    if ((fp = fopen(file_dir, "r")) == NULL) break;
     }
     fp = fopen(file_dir, "w");
     while(strcmp(msg,".") != 0){
