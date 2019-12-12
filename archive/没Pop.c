@@ -102,10 +102,12 @@ void simpe_server(int sockfd) {
 
   char buf[MAX_BUFF];
 
-  int buf_len;
+
   
   FILE *fp; // FILE型構造体
-  char fname[] = "test.txt";
+  //rtn=read(sockfd,buf,MAX_BUFF);
+  //if(strcmp(buf,''));
+  char fname[] = "UserA/test.txt";
  
  
 	fp = fopen(fname, "r"); // ファイルを開く。失敗するとNULLを返す。
