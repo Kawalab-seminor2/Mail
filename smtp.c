@@ -55,7 +55,7 @@ while(1)
     {
 
     memset(buff, 0, sizeof(buff));
-printf("test\n");
+    printf("test\n");
     memset(msg, 0, sizeof(msg));printf("test\n");	
     memset(to, 0, sizeof(to));
     printf("waiting for connection\n");
@@ -65,7 +65,7 @@ printf("test\n");
         perror("accept");
         exit(-1);
     }
-
+    //receive from client
     recv(cli, to, sizeof(msg), 0);
     printf("connection request to %s\n",to);
 
