@@ -55,8 +55,7 @@ while(1)
     {
 
     memset(buff, 0, sizeof(buff));
-printf("test\n");
-    memset(msg, 0, sizeof(msg));printf("test\n");	
+    memset(msg, 0, sizeof(msg));
     memset(to, 0, sizeof(to));
     printf("waiting for connection\n");
     //accept
