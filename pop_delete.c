@@ -60,19 +60,19 @@ int main(){
 		recv(acc_sd, from, sizeof(from), 0);
 		printf("Connection request from \"%s\"\n",from);
 		for(i=0;;i++){
-			sprintf(file_dir, "%s/mail%d.txt",from,i+1); //送るメール名作成
+			sprintf(file_dir, "%s/mail%d.txt",from,i+1);
 			if((fp = fopen(file_dir,"r")) != NULL){
 				strcpy(buff,"0");
-				send(acc_sd, buff, sizeof(buff),0); //送れるメールがあるため”０”を送信
-				while(strcmp(msg,"1") != 0) { //メール送信、”１”を受けとるとメールの終わりを確認
+				send(acc_sd, buff, sizeof(buff),0);
+				while(strcmp(msg,"1") != 0) {
 					fgets(buff, MAX-1, fp);
 					buff[strlen(buff) - 1] = '\0';
 					send(acc_sd, buff, sizeof(buff),0);
 					recv(acc_sd, msg, sizeof(msg), 0);
 				}
-				remove(file_dir); //送信したメールの削除
+				remove(file_dir);
 			}else{
-				if(i==0) printf("There aren't new messages to %s\n",from); //送れるメールがないため"1"を送信
+				if(i==0) printf("There aren't new messages to %s\n",from);
 				strcpy(buff,"1");
 				send(acc_sd, buff, sizeof(buff),0);
 				break;
