@@ -20,7 +20,6 @@ int main(){
     int sock, cli, k;
     unsigned int len;
     int sent;
-    //char mesg[] = "HELO";
     struct sockaddr_in server, client;
     char buff[MAX], msg[MAX], to[MAX],txt[]="rec.txt", file_dir[MAX];
     FILE *fp;
@@ -36,7 +35,6 @@ int main(){
     server.sin_family = AF_INET;
     server.sin_port = htons(SMTP);
     server.sin_addr.s_addr = INADDR_ANY;
-	//bzero(&server.sin_zero, 10);
 
 	//bind
 len = sizeof(struct sockaddr_in);
@@ -60,7 +58,6 @@ while(1)
 printf("test\n");
     memset(msg, 0, sizeof(msg));printf("test\n");	
     memset(to, 0, sizeof(to));
-	printf("test\n");
     printf("waiting for connection\n");
     //accept
     if((cli = accept(sock, (struct sockaddr *)&client, &len)) == ERR)
