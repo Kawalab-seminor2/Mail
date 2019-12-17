@@ -8,21 +8,25 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+
+#define FALSE 0
+#define TRUE 1
 #define MAX 64
-#define SERVER_IP "192.168.29.105"//5or6"127.0.0.1"
+#define SERVER_IP "127.0.0.1"//192.168.29.105 or 6"127.0.0.1"
 #define SMTP 1900
 #define POP 1901
 
 char from[MAX];
+int debug=FALSE; //TRUE or FALSE
 
 int smtp();
 int pop();
 int history();
-int ex_fgets(char buff[],int size);
-int ex_fprintf(FILE *fp,char format[],char buff[]);
+int fgets_or(char buff[],int size);
+int fprintf_or(FILE *fp,char format[],char buff[]);
 int get_info(char ret[],char file[],int line);
 int cut(char ret[],char data[],const char *token,int point);
-int test(FILE *fp,char file[]);
+int wait_ent(void);
 
 int main(void){
 	// 変数
@@ -30,23 +34,22 @@ int main(void){
 		int id;
 		char *mode;
 	} List;
-	const List menu[]={{0,"終了"},{1,"送信"},{2,"受信"},{3,"履歴"}};
-	int i,v;
+
+	int i,val;
+	char buff[MAX];
+	const List menu[]={{1,"送信"},{2,"受信"},{3,"受信箱"},{0,"終了"}};
 
 	system("clear");
 	printf("メールアドレスを入力してください\n > ");
-	ex_fgets(from,MAX-1);
+	fgets_or(from,MAX-1);
 	while(1){
-		printf("\nメニュー\n");
-		for(i=0;i<4;i++){
-			printf("%d : %s\n",menu[i].id,menu[i].mode);
-		}
-		printf(" > ");
-		scanf("%d%*c",&v);
-		switch(v){
-			case 0:
-				printf("Terminate the process\n");
-				return 0;
+		system("clear");
+		printf("Hello %s\n\nメニュー\n",from);
+		for(i=0;i<(int)(sizeof(menu)/sizeof(menu[0]));i++) printf("%d : %s	",menu[i].id,menu[i].mode);
+		printf("\n > ");
+		fgets(buff, MAX, stdin);
+		val=atoi(buff);
+		switch(val){
 			case 1:
 				smtp();
 				break;
@@ -56,8 +59,12 @@ int main(void){
 			case 3:
 				history();
 				break;
+			case 0:
+				printf("\nGoodbye %s\n",from);
+				return 0;
 			default:
-				fprintf(stderr,"argument\n");
+				fprintf(stderr,"\n無効な数値が指定されました\n");
+				wait_ent();
 		}
 	}
 	return 0;
@@ -66,37 +73,36 @@ int main(void){
 int smtp(){
 	// 変数
 	int sd;
-	char buff[MAX],msg[MAX];
-	char file[]="body.txt";
+	char buff[MAX],msg[MAX],file[]="mail0.txt";
 	FILE *fp;
 	time_t t;
 	struct sockaddr_in addr;
 
+	system("clear");
 	// メールの作成
 	if((fp = fopen(file,"w")) == NULL){
 		fprintf(stderr,"ファイルのオープンに失敗しました\n");
-		fclose(fp);
+		wait_ent();
 		return -1;
 	}
-	ex_fprintf(fp,"From;%s\n",from);
-
-	printf("To\n > ");
-	ex_fgets(buff,MAX-1);
-	ex_fprintf(fp,"To;%s\n",buff);
+	fprintf_or(fp,"From;%s\n",from);
+	printf("宛先\n > ");
+	fgets_or(buff,MAX-1);
+	fprintf_or(fp,"To;%s\n",buff);
 	t=time(NULL);
 	strftime(buff, sizeof(buff), "%Y/%m/%d %H:%M:%S", localtime(&t));
-	ex_fprintf(fp,"Date;%s\n",buff);
-	printf("Subject\n > ");
+	fprintf_or(fp,"Date;%s\n",buff);
+	printf("件名\n > ");
 	fgets(buff, MAX-1, stdin);
 	buff[strlen(buff) - 1] = '\0';
-	ex_fprintf(fp,"Subject;%s\n",buff);
+	fprintf_or(fp,"Subject;%s\n",buff);
 	memset(buff,0,sizeof(buff));
-	printf("Body\n");
+	printf("本文('.'で終了)\n");
 	while(strcmp(buff,".") != 0){
 		printf(" > ");
 		fgets(buff, MAX-1, stdin);
 		buff[strlen(buff) - 1] = '\0';
-		ex_fprintf(fp,"%s\n",buff);
+		fprintf_or(fp,"%s\n",buff);
 	}
 	fclose(fp);
 	// 送受信バッファの初期化
@@ -105,6 +111,7 @@ int smtp(){
 	// IPv4 TCP のソケットを作成する
 	if((sd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket");
+		wait_ent();
 		return -1;
 	}
 	// 送信先アドレスとポート番号を設定する
@@ -114,10 +121,11 @@ int smtp(){
 	// サーバ接続
 	if(connect(sd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0){
 		perror("connect");
+		wait_ent();
 		return -1;
 	}
 	// 送信処理
-	printf("\nConnect to server\n");
+	if(debug==TRUE) printf("\nConnect to server\n");
 	// ユーザー情報
 	get_info(buff,file,2);
 	cut(buff,buff,";@",2);
@@ -125,7 +133,8 @@ int smtp(){
 	// 本文
 	if((fp = fopen(file,"r")) == NULL){
 		fprintf(stderr,"ファイルのオープンに失敗しました\n");
-		fclose(fp);
+		close(sd);
+		wait_ent();
 		return -1;
 	}
 	while (strcmp(msg,"1") != 0) {
@@ -136,22 +145,25 @@ int smtp(){
 	}
 	fclose(fp);
 	close(sd);
-	printf("Disconnect from server\n\n");
+	if(debug==TRUE) printf("\nDisconnect from server\n");
 	remove(file);
+	//wait_ent();
 	return 0;
 }
 int pop(){
-	int sd,quantity,i;
-	char buff[MAX],msg[MAX];
+	int sd,i,j;
+	char buff[MAX],msg[MAX],file[MAX],user[MAX];
 	FILE *fp;
 	struct sockaddr_in addr;
 
+	system("clear");
 	// 送受信バッファの初期化
 	memset(buff,0,sizeof(buff));
 	memset(msg,0,sizeof(buff));
 	// IPv4 TCP のソケットを作成する
 	if((sd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		perror("socket");
+		wait_ent();
 		return -1;
 	}
 	// 送信先アドレスとポート番号を設定する
@@ -161,24 +173,30 @@ int pop(){
 	// サーバ接続
 	if(connect(sd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0){
 		perror("connect");
+		wait_ent();
 		return -1;
 	}
 	// 受信処理
-	printf("\nConnect to server\n");
+	if(debug==TRUE) printf("\nConnect to server\n");
 	// ユーザー情報
-	cut(buff,from,"@",1);
-	send(sd, buff, sizeof(buff),0);
+	cut(user,from,"@",1);
+	send(sd, user, sizeof(user),0);
 	// 新着メールの有無を取得
 	for(i=0;;i++){
 		recv(sd, msg, sizeof(msg), 0);
 		if(strcmp(msg,"0") == 0){
 			if(i==0) printf("新着メールがあります\n");
-			test(fp,buff);
-			if((fp = fopen(buff,"w")) == NULL){
+			for(j=0;;j++){
+				sprintf(file, "%s/mail%d.txt",user,j+1);
+				if((fp = fopen(file,"r")) == NULL) break;
+			}
+			if((fp = fopen(file,"w")) == NULL){
 				fprintf(stderr,"ファイルのオープンに失敗しました\n");
+				close(sd);
+				wait_ent();
 				return -1;
 			}
-			printf("%d通目\n",i+1);
+			printf("\n%d通目\n",i+1);
 			printf("-------------------------\n");
 			while(strcmp(msg,".") != 0) {
 				// 受信処理
@@ -190,61 +208,111 @@ int pop(){
 					printf("-------------------------\n");
 					strcpy(buff,"1");
 				}
-				ex_fprintf(fp,"%s\n",msg);
+				fprintf_or(fp,"%s\n",msg);
 				send(sd, buff, sizeof(buff),0);
 			}
 			fclose(fp);
 		}else{
 			if(i==0) printf("新着メールがありません\n");
+			else printf("\nすべてのメールを受信しました\n");
+			wait_ent();
 			break;
 		}
 	}
 	close(sd);
-	printf("Disconnect from server\n\n");
+	if(debug==TRUE) printf("\nDisconnect from server\n");
 	return 0;
 }
 int history(){
-	int i,j,k,v;
-	char buff[MAX],file[MAX],user[MAX];
+	typedef struct list{
+		char *mode;
+		char *format;
+	} List;
+
+	int amount,val,i;
+	char buff[MAX],file[MAX],user[MAX],mode[MAX],old[MAX],new[MAX];;
+	const List menu[]={{"表示","cat n"},{"削除","rm n"},{"終了","0"}};
 	FILE *fp;
 
 	cut(user,from,"@",1);
-	for(i=0;;i++){
-		sprintf(file, "get/%s/mail%d.txt",user,i+1);
-		if((fp = fopen(file,"r")) == NULL){
-			v=i;
-			if(v==0){
-				printf("受信済みメールがありません\n\n");
-				return 0;
-			}else{
-				printf("\n%d 件受信済み\n",v);
-				break;
-			}
-		}
-	}
+	system("clear");
 	while(1){
-		printf("何件目を表示しますか?(0で終了) > ");
-		scanf("%d%*c",&j);
-		if(j>0&&j<=v) i=v-j+1;
-		else if(j==0) return 0;
-		else{
-			printf("Err\n");
-			return -1;
+		// 受信フォルダ内のメール数をカウント
+		for(i=0;;i++){
+			sprintf(file, "%s/mail%d.txt",user,i+1);
+			if((fp = fopen(file,"r")) == NULL) break;
 		}
-		sprintf(file, "get/%s/mail%d.txt",user,i);
-		if((fp = fopen(file,"r")) != NULL){
-			printf("\n%d件目\n",v-i+1);
-			printf("-------------------------\n");
-			while (fgets(buff, MAX, fp)!=NULL) {
-				if(strcmp(buff,".\n") != 0) printf("%s",buff);
-				else printf("-------------------------\n\n");
+		amount=i;
+		if(amount!=0){
+			// 受信リスト表示
+			printf("受信フォルダ\n");
+			for(i=0;i<amount;i++){
+				sprintf(file, "%s/mail%d.txt",user,amount-i);
+				if((fp = fopen(file,"r")) == NULL){
+					fprintf(stderr,"ファイルのオープンに失敗しました\n");
+					wait_ent();
+					return -1;
+				}
+				get_info(buff,file,1);
+				cut(buff,buff,";",2);
+				printf("%2d件目   送信元 : %-20s",i+1,buff);
+				get_info(buff,file,4);
+				cut(buff,buff,";",2);
+				printf("	件名   : %s\n",buff);
+				fclose(fp);
 			}
+			// メニュー表示
+			printf("\n操作\n");
+			for(i=0;i<(int)(sizeof(menu)/sizeof(menu[0]));i++) printf("%s : %s	",menu[i].mode,menu[i].format);
+			printf("\n > ");
+			fgets_or(buff, MAX);
+			cut(mode,buff," \n",1);
+			cut(buff,buff," \n",2);
+			val=amount-atoi(buff)+1;
+			// メール表示
+			if(strcmp(mode,"cat") == 0){
+				if(val>0 && val<=amount){
+					sprintf(file, "%s/mail%d.txt",user,val);
+					if((fp = fopen(file,"r")) == NULL){
+						fprintf(stderr,"ファイルのオープンに失敗しました\n");
+						wait_ent();
+						return -1;
+					}
+					printf("\n-------------------------\n");
+					while (fgets(buff, MAX, fp)!=NULL) {
+						if(strcmp(buff,".\n") != 0) printf("%s",buff);
+						else printf("-------------------------\n");
+					}
+					fclose(fp);
+					wait_ent();
+				}
+				else fprintf(stderr,"\n無効な数値が指定されました\n");
+			}
+			// メール削除
+			else if(strcmp(mode,"rm") == 0){
+				if(val>0 && val<=amount){
+					sprintf(file, "%s/mail%d.txt",user,val);
+					remove(file);
+					for(i=val;i<amount;i++){
+						sprintf(old, "%s/mail%d.txt",user,i+1);
+						sprintf(new, "%s/mail%d.txt",user,i);
+						if(rename(old, new)!=0) fprintf(stderr,"リネームに失敗しました\n");
+					}
+				}
+				else fprintf(stderr,"\n無効な数値が指定されました\n");
+			}
+			else if(strcmp(mode,"0") == 0) return 0;
+			else fprintf(stderr,"\n無効なコマンドが入力されました\n");
+		}
+		else{
+			printf("受信済みメールがありません\n");
+			wait_ent();
+			return 0;
 		}
 	}
-	return 0;
 }
 //空白を許さないfgets
-int ex_fgets(char buff[],int size){
+int fgets_or(char buff[],int size){
 	do {
 		if (fgets(buff, size, stdin) == NULL){
 			buff='\0';
@@ -255,9 +323,11 @@ int ex_fgets(char buff[],int size){
 	return 0;
 }
 //エラー処理付きfprintf
-int ex_fprintf(FILE *fp,char format[],char buff[]){
+int fprintf_or(FILE *fp,char format[],char buff[]){
 	if(fprintf(fp,format,buff) < 0){
 		fprintf(stderr,"ファイルの書き込みに失敗しました\n");
+		fclose(fp);
+		wait_ent();
 		return -1;
 	}
 	return 0;
@@ -270,7 +340,7 @@ int get_info(char ret[],char file[],int line){
 
 	if((fp = fopen(file,"r")) == NULL){
 		fprintf(stderr,"ファイルのオープンに失敗しました\n");
-		fclose(fp);
+		wait_ent();
 		return -1;
 	}
 	for(i=0;fgets(buff[i], sizeof(buff[i]), fp) != NULL;i++);
@@ -281,27 +351,26 @@ int get_info(char ret[],char file[],int line){
 }
 //文字列dataを区切り文字tokenで区切った時の、point個目の要素をretに格納する関数
 int cut(char ret[],char data[],const char *token,int point){
-	int i=0;
-	char buff[MAX],*tp,*argv[MAX];
+	int len=1,i=0;
+	char *tp,buff[MAX],*argv[MAX];
 
 	strcpy(buff,data);
 	tp=strtok(buff,token);
 	argv[i]=tp;
 	for(i=1;i<MAX && tp!=NULL;i++) {
 		tp=strtok(NULL,token);
-		if(tp!=NULL) argv[i]=tp;
+		if(tp!=NULL){
+			argv[i]=tp;
+			len++;
+		}
 	}
-	strcpy(ret,argv[point-1]);
+	if(point-1<len) strcpy(ret,argv[point-1]);
+	else strcpy(ret,"");
 	return 0;
 }
-int test(FILE *fp,char file[]){
-	int i;
-	char buff[MAX];
-
-	cut(buff,from,"@",1);
-	for(i=0;;i++){
-		sprintf(file, "get/%s/mail%d.txt",buff,i+1);
-		if((fp = fopen(file,"r")) == NULL) break;
-	}
+// Enterが入力されるまで待機する関数
+int wait_ent(void){
+	printf("\nEnterを押して継続");
+	scanf("%*c");
 	return 0;
 }
