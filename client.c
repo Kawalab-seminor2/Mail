@@ -306,6 +306,7 @@ int history(){
 		}
 		else{
 			printf("受信済みメールがありません\n");
+			wait_ent();
 			return 0;
 		}
 		wait_ent();
