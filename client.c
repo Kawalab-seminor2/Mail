@@ -12,7 +12,7 @@
 #define FALSE 0
 #define TRUE 1
 #define MAX 64
-#define SERVER_IP "127.0.0.1"//192.168.29.105 or 6"127.0.0.1"
+#define SERVER_IP "192.168.29.104"
 #define SMTP 1900
 #define POP 1901
 
@@ -147,7 +147,8 @@ int smtp(){
 	close(sd);
 	if(debug==TRUE) printf("\nDisconnect from server\n");
 	remove(file);
-	//wait_ent();
+	printf("\n送信完了\n");
+	wait_ent();
 	return 0;
 }
 int pop(){
@@ -235,8 +236,8 @@ int history(){
 	FILE *fp;
 
 	cut(user,from,"@",1);
-	system("clear");
 	while(1){
+		system("clear");
 		// 受信フォルダ内のメール数をカウント
 		for(i=0;;i++){
 			sprintf(file, "%s/mail%d.txt",user,i+1);
@@ -284,7 +285,6 @@ int history(){
 						else printf("-------------------------\n");
 					}
 					fclose(fp);
-					wait_ent();
 				}
 				else fprintf(stderr,"\n無効な数値が指定されました\n");
 			}
@@ -306,9 +306,9 @@ int history(){
 		}
 		else{
 			printf("受信済みメールがありません\n");
-			wait_ent();
 			return 0;
 		}
+		wait_ent();
 	}
 }
 //空白を許さないfgets
@@ -370,7 +370,9 @@ int cut(char ret[],char data[],const char *token,int point){
 }
 // Enterが入力されるまで待機する関数
 int wait_ent(void){
+	char buff[MAX];
+
 	printf("\nEnterを押して継続");
-	scanf("%*c");
+	fgets(buff, sizeof(buff), stdin);
 	return 0;
 }
