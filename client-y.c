@@ -12,7 +12,7 @@
 #define FALSE 0
 #define TRUE 1
 #define MAX 64
-#define SERVER_IP "192.168.29.104"
+#define SERVER_IP "192.168.29.106"
 #define SMTP 1900
 #define POP 1901
 
