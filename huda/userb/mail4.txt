@@ -1,0 +1,7 @@
+From;usera@
+To;userb@
+Date;2020/01/16 15:51:43
+Subject;hello
+hi b
+bye
+.
