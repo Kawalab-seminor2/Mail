@@ -12,7 +12,7 @@
 #define FALSE 0
 #define TRUE 1
 #define MAX 64
-#define SERVER_IP "192.168.29.104"
+#define SERVER_IP "192.168.29.105"
 #define SMTP 1900
 #define POP 1901
 
@@ -89,6 +89,9 @@ int smtp(){
 	printf("宛先\n > ");
 	fgets_or(buff,MAX-1);
 	fprintf_or(fp,"To;%s\n",buff);
+	printf("Cc\n > ");
+	fgets_or(buff,MAX-1);
+	fprintf_or(fp,"Cc;%s\n",buff);
 	t=time(NULL);
 	strftime(buff, sizeof(buff), "%Y/%m/%d %H:%M:%S", localtime(&t));
 	fprintf_or(fp,"Date;%s\n",buff);
