@@ -1,5 +1,5 @@
-make: client-hashimoto.c smtp.c pop.c
+make: client-hashimoto.c smtp-hashimoto.c pop-hashimoto.c
 	rm -f client smtp pop
 	gcc client-hashimoto.c -o client -lnsl
-	gcc smtp.c -o smtp
-	gcc pop.c -o pop
+	gcc smtp-hashimoto.c -o smtp
+	gcc pop-hashimoto.c -o pop
