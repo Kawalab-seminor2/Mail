@@ -89,6 +89,9 @@ int smtp(){
 	printf("宛先\n > ");
 	fgets_or(buff,MAX-1);
 	fprintf_or(fp,"To;%s\n",buff);
+	printf("Cc\n (必要なければ0を入力)> ");
+	fgets_or(buff,MAX-1);
+	fprintf_or(fp,"Cc;%s\n",buff);
 	t=time(NULL);
 	strftime(buff, sizeof(buff), "%Y/%m/%d %H:%M:%S", localtime(&t));
 	fprintf_or(fp,"Date;%s\n",buff);
@@ -128,6 +131,29 @@ int smtp(){
 	if(debug==TRUE) printf("\nConnect to server\n");
 	// ユーザー情報
 	get_info(buff,file,2);
+	cut(buff,buff,";@",2);
+	send(sd, buff, sizeof(buff),0);
+	// 本文
+	if((fp = fopen(file,"r")) == NULL){
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		close(sd);
+		wait_ent();
+		return -1;
+	}
+	while (strcmp(msg,"1") != 0) {
+		fgets(buff, MAX-1, fp);
+		buff[strlen(buff) - 1] = '\0';
+		send(sd, buff, sizeof(buff),0);
+		recv(sd, msg, sizeof(msg),0);
+	}
+	fclose(fp);
+	if(debug==TRUE) printf("\nDisconnect from server\n");
+	//Cc
+	// 送受信バッファの初期化
+	memset(buff,0,sizeof(buff));
+	memset(msg,0,sizeof(buff));
+	// ユーザー情報
+	get_info(buff,file,3);
 	cut(buff,buff,";@",2);
 	send(sd, buff, sizeof(buff),0);
 	// 本文
@@ -187,9 +213,10 @@ int pop(){
 		recv(sd, msg, sizeof(msg), 0);
 		if(strcmp(msg,"0") == 0){
 			if(i==0) printf("新着メールがあります\n");
+			
 			for(j=0;;j++){
-				sprintf(file, "%s/mail%d.txt",user,j+1);
-				if((fp = fopen(file,"r")) == NULL) break;
+				sprintf(file, "client%s/mail%d.txt",user,j+1);
+				if((fp = fopen(file,"r")) == NULL) break; //すでにファイルが存在するか？
 			}
 			if((fp = fopen(file,"w")) == NULL){
 				fprintf(stderr,"ファイルのオープンに失敗しました\n");
@@ -197,6 +224,7 @@ int pop(){
 				wait_ent();
 				return -1;
 			}
+			
 			printf("\n%d通目\n",i+1);
 			printf("-------------------------\n");
 			while(strcmp(msg,".") != 0) {
@@ -240,7 +268,7 @@ int history(){
 		system("clear");
 		// 受信フォルダ内のメール数をカウント
 		for(i=0;;i++){
-			sprintf(file, "%s/mail%d.txt",user,i+1);
+			sprintf(file, "client%s/mail%d.txt",user,i+1);
 			if((fp = fopen(file,"r")) == NULL) break;
 		}
 		amount=i;
@@ -248,7 +276,7 @@ int history(){
 			// 受信リスト表示
 			printf("受信フォルダ\n");
 			for(i=0;i<amount;i++){
-				sprintf(file, "%s/mail%d.txt",user,amount-i);
+				sprintf(file, "client%s/mail%d.txt",user,amount-i);
 				if((fp = fopen(file,"r")) == NULL){
 					fprintf(stderr,"ファイルのオープンに失敗しました\n");
 					wait_ent();
@@ -256,8 +284,8 @@ int history(){
 				}
 				get_info(buff,file,1);
 				cut(buff,buff,";",2);
-				printf("%2d件目   送信元 : %-20s",i+1,buff);
-				get_info(buff,file,4);
+				printf("%2d件目   送信元 : %-15s",i+1,buff);
+				get_info(buff,file,5);
 				cut(buff,buff,";",2);
 				printf("	件名   : %s\n",buff);
 				fclose(fp);
@@ -273,7 +301,7 @@ int history(){
 			// メール表示
 			if(strcmp(mode,"cat") == 0){
 				if(val>0 && val<=amount){
-					sprintf(file, "%s/mail%d.txt",user,val);
+					sprintf(file, "client%s/mail%d.txt",user,val);
 					if((fp = fopen(file,"r")) == NULL){
 						fprintf(stderr,"ファイルのオープンに失敗しました\n");
 						wait_ent();
@@ -291,11 +319,11 @@ int history(){
 			// メール削除
 			else if(strcmp(mode,"rm") == 0){
 				if(val>0 && val<=amount){
-					sprintf(file, "%s/mail%d.txt",user,val);
+					sprintf(file, "client%s/mail%d.txt",user,val);
 					remove(file);
 					for(i=val;i<amount;i++){
-						sprintf(old, "%s/mail%d.txt",user,i+1);
-						sprintf(new, "%s/mail%d.txt",user,i);
+						sprintf(old, "client%s/mail%d.txt",user,i+1);
+						sprintf(new, "client%s/mail%d.txt",user,i);
 						if(rename(old, new)!=0) fprintf(stderr,"リネームに失敗しました\n");
 					}
 				}
@@ -348,6 +376,7 @@ int get_info(char ret[],char file[],int line){
 	fclose(fp);
 	cut(buff[line-1],buff[line-1],"\n",1);
 	strcpy(ret,buff[line-1]);
+	//printf("%s\n",ret); debug
 	return 0;
 }
 //文字列dataを区切り文字tokenで区切った時の、point個目の要素をretに格納する関数
@@ -367,6 +396,7 @@ int cut(char ret[],char data[],const char *token,int point){
 	}
 	if(point-1<len) strcpy(ret,argv[point-1]);
 	else strcpy(ret,"");
+	//printf("%s\n",ret); debug
 	return 0;
 }
 // Enterが入力されるまで待機する関数

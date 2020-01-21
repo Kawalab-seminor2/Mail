@@ -7,19 +7,26 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define MAX 64
 #define SERVER_IP "172.0.0.1" //local loopback
 #define SMTP 1900
 #define POP 1901
 
+void cleanup_child(int signal) {
+    wait(NULL);
+}
+
 int main(){
-	int sd, acc_sd, i;
+	int sd,quantity,i;
+	int acc_sd;
 	struct sockaddr_in addr;
 	struct sockaddr_in from_addr;
 	socklen_t sin_size = sizeof(struct sockaddr_in);
-	char buff[MAX], msg[MAX], from[MAX], file_dir[MAX];
+	char buff[MAX],msg[MAX],from[MAX],file_dir[MAX];
 	FILE *fp;
+	pid_t child_pid;
 
 	system("clear");
 	// IPv4 TCP のソケットを作成
@@ -50,40 +57,51 @@ int main(){
 		memset(from, 0, sizeof(from));
 	// クライアントからコネクト要求が来るまで停止する
 	// 以降、サーバ側は acc_sd を使ってパケットの送受信を行う
-		printf("Waiting for connection\n");
+		printf("(POP) Waiting for connection\n");
 		if((acc_sd = accept(sd, (struct sockaddr *)&from_addr, &sin_size)) < 0) {
 			perror("accept");
 			break;
 		}
-	// パケット受信。パケットが到着するまでブロック
-		recv(acc_sd, from, sizeof(from), 0);
-		printf("Connection request from \"%s\"\n",from);
-		for(i=0;;i++){
-			sprintf(file_dir, "%s/mail%d.txt",from,i+1); //送るメール名作成
-			if((fp = fopen(file_dir,"r")) != NULL){
-				strcpy(buff,"0");
-				send(acc_sd, buff, sizeof(buff),0); //送れるメールがあるため”０”を送信
-				while(strcmp(msg,"1") != 0) { //メール送信、”１”を受けとるとメールの終わりを確認
-					fgets(buff, MAX-1, fp);
-					buff[strlen(buff) - 1] = '\0';
-					send(acc_sd, buff, sizeof(buff),0);
-					recv(acc_sd, msg, sizeof(msg), 0);
-				}
-				remove(file_dir); //送信したメールの削除
-			}else{
-				if(i==0) printf("There aren't new messages to %s\n",from); //送れるメールがないため"1"を送信
-				strcpy(buff,"1");
-				send(acc_sd, buff, sizeof(buff),0);
-				break;
-			}
-			memset(msg, 0, sizeof(msg));
-			fclose(fp);
+	// forkして子プロセスを作成する
+	// fork以降の処理は親プロセスと子プロセスの2つのプロセスが同時に実行されている
+		if ((child_pid=fork()) < 0) {	
+			perror("fork");
+			return -1;
 		}
-	// パケット送受信用ソケットのクローズ
-		close(acc_sd);
-		printf("Disconnect from \"%s\" \n\n",from);
+	// 子プロセスが実行する処理
+		else if (child_pid == 0) {
+		// パケット受信
+			recv(acc_sd, from, sizeof(from), 0);
+			printf("Connection request from \"%s\"\n",from);
+			for(i=0;;i++){
+				sprintf(file_dir, "%s/mail%d.txt",from,i+1); //送るメール名作成
+				if((fp = fopen(file_dir,"r")) != NULL){
+					strcpy(buff,"0");
+					send(acc_sd, buff, sizeof(buff),0); //送れるメールがあるため”０”を送信
+					while(strcmp(msg,"1") != 0) { //メール送信、”１”を受けとるとメールの終わりを確認
+						fgets(buff, MAX-1, fp);
+						buff[strlen(buff) - 1] = '\0';
+						send(acc_sd, buff, sizeof(buff),0);
+						recv(acc_sd, msg, sizeof(msg), 0);
+					}
+					fclose(fp);
+					remove(file_dir); //送信したメールの削除
+				}else{
+					if(i==0) printf("There aren't new messages to %s\n",from); //送れるメールがないため"1"を送信
+						strcpy(buff,"1");
+						send(acc_sd, buff, sizeof(buff),0);
+						break;
+					}
+					memset(msg, 0, sizeof(msg));
+				}
+			close(sd);
+			printf("Disconnect from \"%s\" \n\n",from);
+			signal(SIGCHLD,cleanup_child);		
+			return 0;
+		}
+	// 親プロセスが実行する処理
+		else{
+			close(acc_sd);
+		}
 	}
-	// 接続要求待ち受け用ソケットをクローズ
-	close(sd);
-	return 0;
 }

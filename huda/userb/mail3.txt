@@ -1,8 +1,0 @@
-From;usera@
-To;userb@
-Date;2020/01/15 22:07:17
-Subject;hello
-hi
-i am usera
-bye
-.

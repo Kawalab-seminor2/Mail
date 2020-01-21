@@ -1,6 +1,0 @@
-From;usera@
-To;usera@, userc@
-Date;2020/01/16 15:59:55
-Subject;testing again
-abcdfg
-.
