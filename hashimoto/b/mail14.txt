@@ -1,7 +1,0 @@
-From;a
-To;c
-Cc;b
-Date;2020/01/16 18:54:29
-Subject;mjdia
-dnsiadnsad
-.

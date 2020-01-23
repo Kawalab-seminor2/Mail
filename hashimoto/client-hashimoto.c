@@ -22,6 +22,7 @@ int debug=FALSE; //TRUE or FALSE
 int smtp();
 int pop();
 int history();
+int quotation();
 int fgets_or(char buff[],int size);
 int fprintf_or(FILE *fp,char format[],char buff[]);
 int get_info(char ret[],char file[],int line);
@@ -89,7 +90,7 @@ int smtp(){
 	printf("宛先\n > ");
 	fgets_or(buff,MAX-1);
 	fprintf_or(fp,"To;%s\n",buff);
-	printf("Cc\n (必要なければ0を入力)> ");
+	printf("Cc\n > ");
 	fgets_or(buff,MAX-1);
 	fprintf_or(fp,"Cc;%s\n",buff);
 	t=time(NULL);
@@ -260,7 +261,7 @@ int history(){
 
 	int amount,val,i;
 	char buff[MAX],file[MAX],user[MAX],mode[MAX],old[MAX],new[MAX];;
-	const List menu[]={{"表示","cat n"},{"削除","rm n"},{"終了","0"}};
+	const List menu[]={{"表示","cat n"},{"削除","rm n"},{"引用","quo n"},{"終了","0"}};
 	FILE *fp;
 
 	cut(user,from,"@",1);
@@ -329,6 +330,15 @@ int history(){
 				}
 				else fprintf(stderr,"\n無効な数値が指定されました\n");
 			}
+			// メール引用
+			if(strcmp(mode,"quo") == 0){
+				if(val>0 && val<=amount){
+					sprintf(file, "client%s/mail%d.txt",user,val);
+					quotation(file);
+				
+				}
+				else fprintf(stderr,"\n無効な数値が指定されました\n");
+			}
 			else if(strcmp(mode,"0") == 0) return 0;
 			else fprintf(stderr,"\n無効なコマンドが入力されました\n");
 		}
@@ -340,6 +350,121 @@ int history(){
 		wait_ent();
 	}
 }
+
+//メール引用
+int quotation(char readfile[]){
+int sd,i=7;
+	char buff[MAX],msg[MAX],file[]="mail0.txt",sub[]="a",main[]=".";
+	FILE *fp;
+	time_t t;
+	struct sockaddr_in addr;
+	
+	
+
+	system("clear");
+	// メールの作成
+	if((fp = fopen(file,"w")) == NULL){
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		wait_ent();
+		return -1;
+	}
+	fprintf_or(fp,"From;%s\n",from);
+	printf("宛先\n > ");
+	fgets_or(buff,MAX-1);
+	fprintf_or(fp,"To;%s\n",buff);
+	printf("Cc\n > ");
+	fgets_or(buff,MAX-1);
+	fprintf_or(fp,"Cc;%s\n",buff);
+	t=time(NULL);
+	strftime(buff, sizeof(buff), "%Y/%m/%d %H:%M:%S", localtime(&t));
+	fprintf_or(fp,"Date;%s\n",buff);
+	get_info_quo(buff,readfile,5);
+	buff[strlen(buff) - 1] = '\0';
+	fprintf_or(fp,"%s\n",buff);
+	memset(buff,0,sizeof(buff));
+		get_info_quo(buff,readfile,6);
+		buff[strlen(buff) - 1] = '\0';
+		fprintf_or(fp,"%s\n",buff);
+		//printf("number:6 %s\n",buff);
+		while(strcmp(buff,".") != 0){
+		get_info_quo(buff,readfile,i);
+		buff[strlen(buff) - 1] = '\0';
+		fprintf_or(fp,"%s\n",buff);
+		//printf("mumber:%d %s\n ",i,buff);
+		i++;
+	}
+		
+	/*fprintf_or(fp,"%s\n",main);*/
+	fclose(fp); 
+	// 送受信バッファの初期化
+	memset(buff,0,sizeof(buff));
+	memset(msg,0,sizeof(buff));
+	// IPv4 TCP のソケットを作成する
+	if((sd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		wait_ent();
+		return -1;
+	}
+	// 送信先アドレスとポート番号を設定する
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(SMTP);
+	addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+	// サーバ接続
+	if(connect(sd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0){
+		perror("connect");
+		wait_ent();
+		return -1;
+	}
+	// 送信処理
+	if(debug==TRUE) printf("\nConnect to server\n");
+	// ユーザー情報
+	get_info(buff,file,2);
+	cut(buff,buff,";@",2);
+	send(sd, buff, sizeof(buff),0);
+	// 本文
+	if((fp = fopen(file,"r")) == NULL){
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		close(sd);
+		wait_ent();
+		return -1;
+	}
+	while (strcmp(msg,"1") != 0) {
+		fgets(buff, MAX-1, fp);
+		buff[strlen(buff) - 1] = '\0';
+		send(sd, buff, sizeof(buff),0);
+		recv(sd, msg, sizeof(msg),0);
+	}
+	fclose(fp);
+	if(debug==TRUE) printf("\nDisconnect from server\n");
+	//Cc
+	// 送受信バッファの初期化
+	memset(buff,0,sizeof(buff));
+	memset(msg,0,sizeof(buff));
+	// ユーザー情報
+	get_info(buff,file,3);
+	cut(buff,buff,";@",2);
+	send(sd, buff, sizeof(buff),0);
+	// 本文
+	if((fp = fopen(file,"r")) == NULL){
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		close(sd);
+		wait_ent();
+		return -1;
+	}
+	while (strcmp(msg,"1") != 0) {
+		fgets(buff, MAX-1, fp);
+		buff[strlen(buff) - 1] = '\0';
+		send(sd, buff, sizeof(buff),0);
+		recv(sd, msg, sizeof(msg),0);
+	}
+	fclose(fp);
+	close(sd);
+	if(debug==TRUE) printf("\nDisconnect from server\n");
+	remove(file);
+	printf("\n送信完了\n");
+	return 0;
+}
+
 //空白を許さないfgets
 int fgets_or(char buff[],int size){
 	do {
@@ -377,6 +502,23 @@ int get_info(char ret[],char file[],int line){
 	cut(buff[line-1],buff[line-1],"\n",1);
 	strcpy(ret,buff[line-1]);
 	//printf("%s\n",ret); debug
+	return 0;
+}
+
+int get_info_quo(char ret[],char file[],int line){
+	int i;
+	char buff[MAX][MAX];
+	FILE *fp;
+
+	if((fp = fopen(file,"r")) == NULL){
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		wait_ent();
+		return -1;
+	}
+	for(i=0;fgets(buff[i], sizeof(buff[i]), fp) != NULL;i++);
+	fclose(fp);
+	strcpy(ret,buff[line-1]);
+	//rintf("%s\n",ret); //debug
 	return 0;
 }
 //文字列dataを区切り文字tokenで区切った時の、point個目の要素をretに格納する関数
