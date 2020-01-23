@@ -13,11 +13,7 @@
 #define MAX 64
 #define SERVER_IP "127.0.0.1" //local loopback
 #define SMTP 1900
-#define POP 110
-
-void cleanup_child(int signal) {
-    wait(NULL);
-}
+#define POP 1901
 
 int main(){
 	int sock, cli, k;
@@ -59,70 +55,75 @@ int main(){
 		memset(Cc, 0, sizeof(Cc));
 
 		printf("(SMTP) Waiting for connection\n");
-		// accept
 		if((cli = accept(sock, (struct sockaddr *)&client, &len)) == ERR){
 			perror("accept");
 			exit(-1);
 		}
 
-		if ((child_pid=fork()) < 0) {	
+		// create child process
+		if ((child_pid = fork()) < 0) {	
 			perror("fork");
 			exit(-1);
 		}
-
+		// child
 		else if (child_pid == 0) {
+			close(sock);		// close child copy
 			// receive from client
 			recv(cli, to, sizeof(msg), 0);
-			printf("connection request to %s\n",to);
-
+			printf("Connection request to \"%s\"\n",to);
+			
 			for(k=0;;k++){
 				sprintf(file_dir,"%s/mail%d.txt", to, k+1);
 				if ((fp = fopen(file_dir, "r")) == NULL) break;
 			}
-	    		fp = fopen(file_dir, "w");
-			while(strcmp(msg,".") != 0){
-				recv(cli, msg, sizeof(msg),0);
-				if(strcmp(msg,".") == 0){
-				strcpy(buff, "1");
-				}
-				else{
-				strcpy(buff, "0");
-				}
+	    			fp = fopen(file_dir, "w");
+				while(strcmp(msg,".") != 0){
+					recv(cli, msg, sizeof(msg),0);
+					if(strcmp(msg,".") == 0){
+						strcpy(buff, "1");
+					}
+					else{
+						strcpy(buff, "0");
+					}
 				fprintf(fp, "%s\n", msg);
 				send(cli, buff, sizeof(buff), 0);
-			}
+				}
 			fclose(fp);
+
 			// Cc
 			// init buff and msg
 			memset(buff, 0, sizeof(buff));
 			memset(msg, 0, sizeof(msg));
 			// process
 			recv(cli, Cc, sizeof(msg), 0);
-			printf("connection request to %s\n\n",Cc);
+			printf("Connection request to \"%s\"\n\n",Cc);
 	
 			for(k=0;;k++){
 				sprintf(file_dir,"%s/mail%d.txt", Cc, k+1);
 				if ((fp = fopen(file_dir, "r")) == NULL) break;
 			}
-			fp = fopen(file_dir, "w");
-			while(strcmp(msg,".") != 0){
-				recv(cli, msg, sizeof(msg),0);
-				if(strcmp(msg,".") == 0){
-					strcpy(buff, "1");
+				fp = fopen(file_dir, "w");
+				while(strcmp(msg,".") != 0){
+					recv(cli, msg, sizeof(msg),0);
+					if(strcmp(msg,".") == 0){
+						strcpy(buff, "1");
+					}
+					else{
+						strcpy(buff, "0");
+					}
+					fprintf(fp, "%s\n", msg);
+					send(cli, buff, sizeof(buff), 0);
 				}
-				else{
-					strcpy(buff, "0");
-				}
-				fprintf(fp, "%s\n", msg);
-				send(cli, buff, sizeof(buff), 0);
-			}
 			fclose(fp);
-			close(sock);
-			signal(SIGCHLD,cleanup_child);
-			return 0;
-		}
-		else{
 			close(cli);
+			exit(0);		// child exits here
+		}
+		// parent
+		else{
+			close(cli);		// close parent copy
+			waitpid(child_pid, NULL, 0);	// waits for child to exit
 		}
 	}
+	close(sock);
+	return 0;
 }  
