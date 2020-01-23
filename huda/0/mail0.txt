@@ -1,7 +1,0 @@
-From;c@
-To;b@
-Cc;0
-Date;2020/01/21 13:14:41
-Subject;test3
-hellooooo
-.

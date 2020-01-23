@@ -8,11 +8,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
 #define FALSE 0
 #define TRUE 1
 #define MAX 64
-#define SERVER_IP "192.168.29.104"
+#define SERVER_IP "192.168.29.107"
 #define SMTP 1900
 #define POP 1901
 
@@ -73,15 +72,16 @@ int main(void){
 int smtp(){
 	// 変数
 	int sd;
-	char buff[MAX],msg[MAX],file[]="mail0.txt";
+	char buff[MAX],msg[MAX],file[MAX];		/*元はfile[]="mail0.txt"*/
 	FILE *fp;
 	time_t t;
 	struct sockaddr_in addr;
 
 	system("clear");
+	sprintf(file, "mail0%s.txt",from);		/*ちゃんと他ユーザも送信できるための追加*/
 	// メールの作成
 	if((fp = fopen(file,"w")) == NULL){
-		fprintf(stderr,"ファイルのオープンに失敗しました\n");
+		fprintf(stderr,"ファイルのオープンに失敗しました\n");	
 		wait_ent();
 		return -1;
 	}
@@ -148,7 +148,7 @@ int smtp(){
 	}
 	fclose(fp);
 	if(debug==TRUE) printf("\nDisconnect from server\n");
-	//Cc
+	// Cc
 	// 送受信バッファの初期化
 	memset(buff,0,sizeof(buff));
 	memset(msg,0,sizeof(buff));
@@ -216,7 +216,7 @@ int pop(){
 			
 			for(j=0;;j++){
 				sprintf(file, "client%s/mail%d.txt",user,j+1);
-				if((fp = fopen(file,"r")) == NULL) break; //すでにファイルが存在するか？
+				if((fp = fopen(file,"r")) == NULL) break;
 			}
 			if((fp = fopen(file,"w")) == NULL){
 				fprintf(stderr,"ファイルのオープンに失敗しました\n");
