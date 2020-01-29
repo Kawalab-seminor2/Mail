@@ -1,0 +1,7 @@
+From;huda
+To;yamaguchi
+Cc;a
+Date;2020/01/29 17:43:14
+Subject;from huda
+test
+.
