@@ -1,7 +1,0 @@
-From;a
-To;e
-Cc;b
-Date;2020/01/29 19:19:15
-Subject;test from a
-hello
-.

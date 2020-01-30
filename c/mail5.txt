@@ -1,0 +1,8 @@
+From;a
+To;b
+Cc;c
+Date;2020/01/30 17:12:53
+作成者From;
+Subject;test2
+test
+.
