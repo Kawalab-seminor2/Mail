@@ -1,6 +1,0 @@
-From;a
-To;b
-Date;2020/01/16 15:06:26
-Subject;b
-sv
-.

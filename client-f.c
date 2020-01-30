@@ -17,7 +17,6 @@
 #define SERVER_IP "192.168.29.105"
 #define SMTP 1900
 #define POP 1901
-#define ACC 1902
 
 char from[MAX];
 int debug=FALSE; //TRUE or FALSE
@@ -120,7 +119,7 @@ int account(){//アカウントの認証
         
         // 送信先アドレスとポート番号を設定する
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(ACC);
+        addr.sin_port = htons(SMTP);
         addr.sin_addr.s_addr = inet_addr(SERVER_IP);
 
         // サーバ接続///////////////

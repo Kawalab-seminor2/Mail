@@ -22,7 +22,7 @@ int debug=FALSE; //TRUE or FALSE
 int smtp();
 int pop();
 int history();
-int quotation();
+int forward();
 int fgets_or(char buff[],int size);
 int fprintf_or(FILE *fp,char format[],char buff[]);
 int get_info(char ret[],char file[],int line);
@@ -261,7 +261,7 @@ int history(){
 
 	int amount,val,i;
 	char buff[MAX],file[MAX],user[MAX],mode[MAX],old[MAX],new[MAX];;
-	const List menu[]={{"表示","cat n"},{"削除","rm n"},{"引用","quo n"},{"終了","0"}};
+	const List menu[]={{"表示","cat n"},{"削除","rm n"},{"転送","for n"},{"終了","0"}};
 	FILE *fp;
 
 	cut(user,from,"@",1);
@@ -322,6 +322,7 @@ int history(){
 				if(val>0 && val<=amount){
 					sprintf(file, "client%s/mail%d.txt",user,val);
 					remove(file);
+					printf("メールを削除しました\n");
 					for(i=val;i<amount;i++){
 						sprintf(old, "client%s/mail%d.txt",user,i+1);
 						sprintf(new, "client%s/mail%d.txt",user,i);
@@ -330,11 +331,11 @@ int history(){
 				}
 				else fprintf(stderr,"\n無効な数値が指定されました\n");
 			}
-			// メール引用
-			if(strcmp(mode,"quo") == 0){
+			// メール転送
+			else if(strcmp(mode,"for") == 0){
 				if(val>0 && val<=amount){
 					sprintf(file, "client%s/mail%d.txt",user,val);
-					quotation(file);
+					forward(file);
 				
 				}
 				else fprintf(stderr,"\n無効な数値が指定されました\n");
@@ -351,8 +352,8 @@ int history(){
 	}
 }
 
-//メール引用
-int quotation(char readfile[]){
+//メール転送
+int forward(char readfile[]){
 int sd,i=7;
 	char buff[MAX],msg[MAX],file[]="mail0.txt",sub[]="a",main[]=".";
 	FILE *fp;

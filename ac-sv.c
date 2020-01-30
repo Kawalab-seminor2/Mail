@@ -93,7 +93,7 @@ int main(){
 			exit(-1);
 		}
 		//child
-		else if (child_pid == 0){
+		else if (pid == 0){
 		close(sock);	//close child copy
         //receive from client
         recv(cli, to, sizeof(msg), 0);
